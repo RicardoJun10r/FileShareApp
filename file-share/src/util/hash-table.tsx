@@ -1,0 +1,7 @@
+class HashTable{
+
+    public HashTable(){
+
+    }
+
+}
