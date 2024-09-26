@@ -1,10 +1,13 @@
-export class No<T extends Object>{
+export class No<K extends number, T extends Object>{
 
     private dado: T | undefined;
 
-    private proximo: No<T> | undefined;
+    private chave: K | undefined;
 
-    public constructor(valor: T){
+    private proximo: No<K, T> | undefined;
+
+    public constructor(chave: K, valor: T){
+        this.chave = chave;
         this.dado = valor;
         this.proximo = undefined;
     }
@@ -13,12 +16,21 @@ export class No<T extends Object>{
         return this.dado;
     }
 
-    getProximo(): No<T> | undefined{
+    getChave(): K | undefined {
+        return this.chave;
+    }
+
+    getProximo(): No<K, T> | undefined{
         return this.proximo;
     }
 
-    setProximo(proximo: (No<T> | undefined)){
+    setProximo(proximo: (No<K, T> | undefined)){
         this.proximo = proximo;
+    }
+
+    print(): void{
+        console.log("Dado: " + this.dado?.toString())
+        console.log("Proximo: " + this.proximo?.print())
     }
 
 }

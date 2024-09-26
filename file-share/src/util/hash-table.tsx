@@ -1,46 +1,53 @@
 import { No } from "./no";
 
-export class HashTable<T extends Object>{
+export class HashTable<K extends number, T extends Object>{
 
     private size: number;
 
-    private vetor: (No<T> | undefined)[];
+    private vetor: (No<K, T> | undefined)[];
 
     public constructor(){
         this.size = 5;
         this.vetor = new Array(this.size);
     }
 
-    put(valor: T): void {
-        let index = this.hashFunction(valor);
-        let elemento: No<T> | undefined = this.vetor[index];
-
-        while(elemento != null){
-            if(elemento.getDado() === valor) break;
-            elemento = elemento.getProximo();
-        }
-
-        if(elemento == null){
-            elemento = new No<T>(valor);
-
-            elemento.setProximo(this.vetor[index]);
+    print(): void {
+        for (let index = 0; index < this.size; index++) {
+            console.log(index + ": " + this.vetor[index]?.print());
         }
     }
 
-    get(valor: T): any {
-        let index = this.hashFunction(valor);
+    put(chave: K, valor: T): void {
+        let index = this.hashFunction(chave);
+        let elemento: No<K, T> | undefined = this.vetor[index];
+    
+        while (elemento != null) {
+            if (elemento.getDado() === valor) return;
+            elemento = elemento.getProximo();
+        }
+    
+        const novoElemento = new No<K, T>(chave, valor);
+    
+        novoElemento.setProximo(this.vetor[index]);
+    
+        this.vetor[index] = novoElemento;
+    }
+    
+
+    get(chave: K): any {
+        let index = this.hashFunction(chave);
         
-        let elemento: No<T> | undefined = this.vetor[index];
+        let elemento: No<K, T> | undefined = this.vetor[index];
 
         while(elemento != null){
-            if(elemento.getDado() === valor) return elemento;
+            if(elemento.getChave() === chave) return elemento;
             elemento = elemento.getProximo();
         }
 
         return null;
     }
 
-    private hashFunction(valor: T): number{
+    private hashFunction(valor: K): number{
         return Number.parseInt(valor.toString()) % this.size;
     }
 

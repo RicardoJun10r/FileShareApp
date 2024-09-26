@@ -1,7 +1,7 @@
 export interface Arquivo {
     horario: Date
-    nome: string
-    tipo: string
-    tamanho: number
+    nome: string | undefined
+    tipo: string | undefined
+    tamanho: number | undefined
     arquivo: File | null
 }
