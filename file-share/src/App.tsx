@@ -16,7 +16,6 @@ function App() {
 
   useEffect(() => {
     socket.on('sharedFiles', (sharedFiles: Arquivo[]) => {
-      console.log('Recebendo arquivos do servidor:', sharedFiles);
 
       setData((prevData) => {
         return sharedFiles.map((file) => {
@@ -80,8 +79,6 @@ function App() {
             arquivo: base64Data,
             contador: 300,
           };
-
-          console.log('Arquivo comprimido pronto para envio:', novoArquivo);
 
           socket.emit('uploadFile', novoArquivo);
 
