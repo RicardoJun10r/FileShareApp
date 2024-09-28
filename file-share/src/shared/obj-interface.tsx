@@ -1,9 +1,8 @@
 export interface Arquivo {
-    horario: Date;
-    nome: string;
-    tamanho: number;
-    tipo: string;
-    arquivo: File;
-    contador: number;
-  }
-  
+  horario: Date;
+  nome: string;
+  tamanho: number;
+  tipo: string;
+  arquivo: string;
+  contador: number;
+}
