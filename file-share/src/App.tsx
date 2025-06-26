@@ -8,15 +8,22 @@ import { Button } from './components/ui/button';
 import pako from 'pako';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3001');
+// Conectar via HTTPS com certificado confiável
+const socket = io('https://192.168.1.170:3001', {
+  transports: ['websocket', 'polling']
+});
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [data, setData] = useState<Arquivo[]>([]);
 
   useEffect(() => {
-    socket.on('sharedFiles', (sharedFiles: Arquivo[]) => {
+    // Adicionar um listener para erros de conexão para ajudar na depuração
+    socket.on('connect_error', (err) => {
+      console.error(`Erro de conexão do socket: ${err.message}`);
+    });
 
+    socket.on('sharedFiles', (sharedFiles: Arquivo[]) => {
       setData((prevData) => {
         return sharedFiles.map((file) => {
           const existingFile = prevData.find((f) => f.nome === file.nome);
@@ -30,6 +37,7 @@ function App() {
 
     return () => {
       socket.off('sharedFiles');
+      socket.off('connect_error');
     };
   }, []);
 
@@ -82,7 +90,6 @@ function App() {
 
           socket.emit('uploadFile', novoArquivo);
 
-          setData((prevData) => [...prevData, novoArquivo]);
         } catch (err) {
           console.error('Erro ao processar o arquivo:', err);
         }
