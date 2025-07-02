@@ -24,12 +24,10 @@ public class Scheduler {
     private void deleteExpiredFiles() {
         List<Arquivo> arquivos = this.arquivoRepository.findAll().get();
         if (arquivos.isEmpty()) {
-            System.out.println("Nenhum arquivo encontrado para exclusão.");
             return;
         }
         for (Arquivo arquivo : arquivos) {
             if (arquivo != null && arquivo.getExpirationTime().isBefore(LocalTime.now())) {
-                System.out.println("Excluindo arquivo expirado: " + arquivo.getName());
                 this.arquivoRepository.delete(arquivo.getId());
             }
         }

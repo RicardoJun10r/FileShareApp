@@ -1,8 +1,9 @@
 package io.github.fileshare.model;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
-import jakarta.persistence.PrePersist;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,6 +12,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Arquivo {
+
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    private final ZoneId zoneId = ZoneId.of("America/Fortaleza");
 
     private Long id;
 
@@ -28,12 +33,10 @@ public class Arquivo {
         this.name = name;
         this.type = type;
         this.content = content;
-    }
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = LocalTime.now();
+        this.createdAt = LocalTime.now(this.zoneId);
+        this.createdAt.format(this.formatter);
         this.expirationTime = createdAt.plusMinutes(5);
+        this.expirationTime.format(this.formatter);
     }
 
 }

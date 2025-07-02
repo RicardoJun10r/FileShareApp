@@ -25,7 +25,6 @@ public class ArquivoService {
                     file.getOriginalFilename(),
                     file.getContentType(),
                     file.getBytes());
-            System.out.println("Salvando arquivo: " + arquivo.getName() + " Tipo: " + arquivo.getType());
             this.arquivoRepository.save(arquivo);
         } catch (Exception e) {
             throw new ErroAoSalvar("Erro ao tentar salvar");
@@ -36,10 +35,13 @@ public class ArquivoService {
         return this.arquivoRepository.findAll().orElseThrow(() -> new ErroAoBaixar("Nenhum arquivo encontrado"));
     }
 
-    public Resource download(Long id) {
-        Arquivo arquivo = this.arquivoRepository.findById(id)
+    public Arquivo download(Long id) {
+        return this.arquivoRepository.findById(id)
                 .orElseThrow(() -> new ErroAoBaixar("Arquivo não encontrado"));
-        return new ByteArrayResource(arquivo.getContent());
+    }
+
+    public Resource downloadContent(Arquivo arq) {
+        return new ByteArrayResource(arq.getContent());
     }
 
 }
