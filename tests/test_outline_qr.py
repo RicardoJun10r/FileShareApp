@@ -62,8 +62,8 @@ class OutlineQrTest(unittest.TestCase):
                     self.assertEqual(image.format, "PNG")
                     self.assertEqual(image.width, image.height)
             with TestClient(app, base_url="http://localhost:8000") as client:
-                with patch("main.socket.socket") as sock:
-                    sock.return_value.__enter__.return_value.getsockname.return_value = (
+                with patch("main.socket") as socket_module:
+                    socket_module.socket.return_value.__enter__.return_value.getsockname.return_value = (
                         "192.168.15.15",
                         40000,
                     )

@@ -1,4 +1,4 @@
-FileShare 0.1.0
+FileShare 0.1.1
 
 1. Extraia TODO o pacote para uma pasta. Não execute de dentro do ZIP.
 2. Windows: abra FileShare.exe.
