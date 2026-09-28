@@ -1,9 +1,10 @@
 """Renderizador distribuído com o aplicativo, sem executáveis no PATH."""
+
 from io import BytesIO
 from threading import Lock
 
-from fastapi import HTTPException
 import pypdfium2 as pdfium
+from fastapi import HTTPException
 
 # PDFium não permite chamadas concorrentes, mesmo em documentos diferentes.
 _pdfium_lock = Lock()
@@ -37,4 +38,7 @@ def render_pdf(content: bytes, page: int):
         except HTTPException:
             raise
         except (pdfium.PdfiumError, ValueError, RuntimeError) as error:
-            raise HTTPException(status_code=422, detail="PDF inválido ou protegido por senha. Baixe para abri-lo") from error
+            raise HTTPException(
+                status_code=422,
+                detail="PDF inválido ou protegido por senha. Baixe para abri-lo",
+            ) from error

@@ -16,8 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from pypdf import PdfReader
 
-from tabular_preview import read_table
 from pdf_preview import render_pdf
+from tabular_preview import read_table
 
 # Conteúdo em memória: os arquivos são perdidos ao reiniciar o servidor.
 db = {}

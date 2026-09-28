@@ -71,11 +71,13 @@ class OutlineQrTest(unittest.TestCase):
                         client.get("/connection/").json()["url"],
                         "http://192.168.15.15:8000/",
                     )
-            with patch.dict(
-                "os.environ", {"FILESHARE_PUBLIC_URL": "https://files.example.com/"}
+            with (
+                patch.dict(
+                    "os.environ", {"FILESHARE_PUBLIC_URL": "https://files.example.com/"}
+                ),
+                TestClient(app) as client,
             ):
-                with TestClient(app) as client:
-                    self.assertEqual(
-                        client.get("/connection/").json()["url"],
-                        "https://files.example.com/",
-                    )
+                self.assertEqual(
+                    client.get("/connection/").json()["url"],
+                    "https://files.example.com/",
+                )
