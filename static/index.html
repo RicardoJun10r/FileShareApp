@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4f6fb">
+    <title>FileShare · Sua rede, seus arquivos</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/vendor/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <a href="#main" class="visually-hidden-focusable skip-link">Ir para o conteúdo</a>
+    <div class="container app-shell">
+        <header class="app-header d-flex flex-wrap align-items-center justify-content-between gap-3 py-4 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <img src="/static/favicon.svg" width="36" height="36" alt="" class="brand-mark">
+                <span class="brand-name">FileShare<span class="text-primary">.</span></span>
+            </div>
+            <div id="connection" class="connection d-flex align-items-center gap-2 small" role="status">
+                <span class="dot" aria-hidden="true"></span><span id="connectionText">Conectando…</span>
+            </div>
+        </header>
+        <main id="main">
+            <section class="intro py-4 py-md-5">
+                <p class="eyebrow text-primary mb-3">COMPARTILHE NA SUA REDE</p>
+                <h1 class="hero-title mb-3"><span class="d-block">Seus arquivos.</span><span class="d-block text-primary">Mais perto de todos.</span></h1>
+                <p class="text-secondary mb-0 intro-copy">Do computador ao celular, em poucos toques. Envie arquivos e links para os dispositivos conectados à sua rede.</p>
+            </section>
+            <div class="row g-4 align-items-start">
+                <div class="col-12 col-lg-8">
+                    <form id="uploadForm" class="card surface-card p-3 p-sm-4" action="/upload/" enctype="multipart/form-data" method="post">
+                        <div class="d-flex align-items-start gap-3 mb-4">
+                            <span class="section-icon text-primary" aria-hidden="true">↑</span>
+                            <div><h2 class="h5 fw-semibold mb-1">Envie seus arquivos</h2><p class="small text-secondary mb-0">Disponíveis para todos os dispositivos conectados.</p></div>
+                        </div>
+                        <label class="dropzone position-relative d-flex flex-column align-items-center gap-2 text-center rounded-4 p-3 p-sm-4" id="dropzone" for="files">
+                            <span class="upload-icon text-primary mb-2" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></span>
+                            <strong class="dropzone-title"><span class="desktop-hint">Arraste seus arquivos para cá</span><span class="touch-hint">Toque para escolher arquivos</span></strong>
+                            <small><span class="desktop-hint">ou </span><span class="choose-files">selecione no seu dispositivo</span></small>
+                            <small class="text-secondary mt-1">Fotos, vídeos, documentos e planilhas</small>
+                            <input class="visually-hidden" id="files" name="files" type="file" multiple required aria-describedby="selection">
+                        </label>
+                        <div class="upload-actions d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mt-4">
+                            <p id="selection" class="text-secondary small mb-0 text-break">Nenhum arquivo selecionado</p>
+                            <button id="upload" class="btn btn-primary px-4" type="submit">Enviar arquivos ↑</button>
+                        </div>
+                        <p class="small mt-3 mb-0" id="status" role="status"></p>
+                    </form>
+                    <form id="linkForm" class="card surface-card p-3 p-sm-4 mt-4">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <span class="section-icon text-primary" aria-hidden="true">↗</span>
+                            <div><h2 class="h5 fw-semibold mb-1">Compartilhe um link</h2><p class="small text-secondary mb-0">Uma página, um vídeo ou aquela referência útil.</p></div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12"><label class="form-label small fw-semibold" for="linkUrl">Endereço do link</label><input class="form-control" id="linkUrl" type="url" inputmode="url" placeholder="https://exemplo.com" maxlength="4096" required></div>
+                            <div class="col-12 col-sm"><label class="form-label small fw-semibold" for="linkTitle">Título <span class="fw-normal text-secondary">(opcional)</span></label><input class="form-control" id="linkTitle" type="text" maxlength="200" placeholder="Dê um nome ao link"></div>
+                            <div class="col-12 col-sm-auto d-grid align-self-end"><button id="sendLink" class="btn btn-outline-primary px-4" type="submit">Enviar link ↑</button></div>
+                        </div>
+                        <p class="small mb-0 mt-3 text-break" id="linkStatus" role="status"></p>
+                    </form>
+                </div>
+                <aside class="col-12 col-lg-4">
+                    <section class="connect-card card surface-card p-3 p-sm-4 text-center" aria-labelledby="connectTitle">
+                        <span class="eyebrow text-secondary mb-2">OUTRO DISPOSITIVO?</span>
+                        <h2 id="connectTitle" class="h5 fw-semibold mb-2">É só escanear.</h2>
+                        <p class="small text-secondary mb-3">Abra a câmera do celular e aponte para o QR Code.</p>
+                        <img id="connectionQR" alt="QR Code para acessar o FileShare" class="align-self-center" hidden>
+                        <a id="connectionAddress" class="d-block text-break small py-3"></a>
+                        <p class="small mb-0" id="qrStatus" role="status">Gerando QR Code…</p>
+                        <div class="network-note small text-secondary border-top pt-3 mt-2">Conecte os dispositivos à <strong>mesma rede Wi-Fi</strong>.</div>
+                    </section>
+                    <p class="aside-note small text-secondary px-2 mt-3 mb-0">A lista se atualiza automaticamente quando alguém compartilha algo.</p>
+                </aside>
+            </div>
+            <section class="library-section mt-5" aria-labelledby="libraryTitle">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <div><h2 id="libraryTitle" class="h5 fw-semibold mb-1">Arquivos compartilhados</h2><p class="small text-secondary mb-0">Toque no arquivo para abrir a prévia.</p></div>
+                    <span id="count" class="count-badge badge" aria-live="polite">Carregando…</span>
+                </div>
+                <div class="table-responsive rounded-4 border bg-body">
+                    <table class="file-table table table-hover align-middle mb-0" role="table" aria-label="Arquivos disponíveis para download">
+                        <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Arquivo</th><th role="columnheader" scope="col">Tamanho</th><th role="columnheader" scope="col">Download</th></tr></thead>
+                        <tbody id="filesTable" role="rowgroup"><tr role="row"><td role="cell" colspan="3" class="empty text-center text-secondary py-5">Carregando arquivos…</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="mt-4" aria-labelledby="linksTitle">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <h2 id="linksTitle" class="h5 fw-semibold mb-0">Links compartilhados</h2><span id="linkCount" class="count-badge badge" aria-live="polite"></span>
+                </div>
+                <ul id="sharedLinks" class="list-group gap-2"><li class="list-group-item rounded-3">Carregando links…</li></ul>
+            </section>
+        </main>
+        <dialog class="border-0 rounded-4 shadow-lg p-3 p-md-4" id="previewDialog" aria-labelledby="previewTitle">
+            <div class="preview-heading d-flex align-items-start justify-content-between gap-2 bg-body pb-3 border-bottom">
+                <h2 id="previewTitle" class="h5 mb-0">Prévia do arquivo</h2><button id="closePreview" class="btn btn-outline-secondary flex-shrink-0" type="button" aria-label="Fechar prévia">Fechar ×</button>
+            </div>
+            <div class="my-3" id="previewBody" aria-busy="false"></div>
+            <p class="small text-secondary" id="previewNotice" role="status"></p>
+            <a id="previewDownload" class="btn btn-primary">Baixar arquivo ↓</a>
+        </dialog>
+        <footer class="d-flex flex-wrap justify-content-between gap-2 text-secondary small py-4 mt-5 border-top"><span class="fw-semibold">FileShare · Compartilhe por perto.</span><span>Arquivos e links ficam disponíveis enquanto o servidor estiver ativo.</span></footer>
+    </div>
+    <script src="/static/app.js" defer></script>
+</body>
+</html>

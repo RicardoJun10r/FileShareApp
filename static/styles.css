@@ -1,0 +1,449 @@
+/* Bootstrap cuida de layout, formulários, botões e tabelas.
+   Aqui ficam apenas comportamentos visuais específicos do FileShare. */
+.btn,
+.form-select,
+.form-control {
+    min-height: 44px;
+}
+
+.touch-hint {
+    display: none;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bs-warning);
+}
+
+.connection.online .dot {
+    background: var(--bs-success);
+}
+
+.dropzone {
+    border: 2px dashed var(--bs-primary-border-subtle);
+    cursor: pointer;
+}
+
+.dropzone.dragging,
+.dropzone:hover {
+    border-color: var(--bs-primary);
+}
+
+.dropzone:focus-within {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 3px;
+}
+
+.upload-icon svg {
+    width: 32px;
+    height: 32px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+#status:empty {
+    display: none;
+}
+
+#status.error {
+    color: var(--bs-danger);
+}
+
+#connectionQR {
+    width: 180px;
+    height: 180px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+#connectionAddress,
+#previewTitle,
+.file-name {
+    overflow-wrap: anywhere;
+}
+
+.file-table {
+    table-layout: fixed;
+}
+
+.file-table th:nth-child(2),
+.file-table th:last-child {
+    width: 120px;
+}
+
+.file-table th:last-child {
+    text-align: right;
+}
+
+.file-row {
+    cursor: pointer;
+}
+
+dialog {
+    width: min(900px, calc(100% - 24px));
+    max-height: 90dvh;
+}
+
+dialog::backdrop {
+    background: #14213bcc;
+}
+
+#previewBody {
+    min-height: 100px;
+}
+
+#previewBody img,
+#previewBody video {
+    display: block;
+    max-width: 100%;
+    max-height: 60dvh;
+    margin: auto;
+    object-fit: contain;
+}
+
+#previewBody audio {
+    width: 100%;
+}
+
+#previewBody pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: 1rem;
+    background: var(--bs-tertiary-bg);
+    border-radius: var(--bs-border-radius);
+    max-height: 55dvh;
+    overflow: auto;
+}
+
+#previewBody .pdf-page {
+    max-height: none;
+    width: 100%;
+}
+
+.pdf-layout {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.pdf-sidebar {
+    position: sticky;
+    top: 0;
+    max-height: 65dvh;
+    overflow: auto;
+}
+
+.pdf-sidebar summary {
+    cursor: pointer;
+    font-weight: 600;
+    min-height: 36px;
+}
+
+.pdf-sidebar p {
+    color: var(--bs-secondary-color);
+    font-size: .875rem;
+}
+
+.toc-entry[aria-current="page"] {
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+}
+
+dialog:has(.pdf-layout),
+dialog:has(.sheet-scroll) {
+    width: min(1200px, calc(100% - 24px));
+}
+
+.sheet-scroll {
+    max-height: 60dvh;
+}
+
+.sheet-toolbar select {
+    max-width: 100%;
+}
+
+.sheet-table td,
+.sheet-table th {
+    min-width: 110px;
+    max-width: 360px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.sheet-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.sheet-table tbody th {
+    min-width: 50px;
+}
+
+@media (max-width: 767.98px) {
+
+    /* Cartões de arquivos no celular; planilhas continuam em uma grade rolável. */
+    .file-table,
+    .file-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .file-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+
+    .file-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 1rem;
+        border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+    }
+
+    .file-table tbody td {
+        display: block;
+        min-width: 0;
+        border: 0;
+    }
+
+    .file-actions>* {
+        flex: 1;
+    }
+
+    .pdf-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pdf-sidebar {
+        position: static;
+        max-height: 240px;
+    }
+}
+
+@media (pointer: coarse) {
+    .desktop-hint {
+        display: none;
+    }
+
+    .touch-hint {
+        display: inline;
+    }
+}
+
+
+/* Permite encolher itens flex/grid mesmo quando os nomes são muito longos. */
+.connect-card>div,
+.upload-actions>*,
+.preview-heading>*,
+.pdf-layout>*,
+.sheet-toolbar>*,
+#sharedLinks li {
+    min-width: 0;
+}
+
+#selection,
+#status,
+#linkStatus,
+#qrStatus,
+#previewNotice,
+#sharedLinks a,
+#sharedLinks small {
+    overflow-wrap: anywhere;
+}
+
+.dot,
+#connectionQR,
+#closePreview,
+.sheet-toolbar input {
+    flex-shrink: 0;
+}
+
+#upload {
+    flex-shrink: 0;
+}
+
+.count-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+}
+
+#previewDialog {
+    max-width: calc(100% - 16px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.preview-heading {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.sheet-scroll {
+    max-width: 100%;
+    min-width: 0;
+    overscroll-behavior-x: contain;
+}
+
+.sheet-toolbar .form-select {
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+.sheet-toolbar label {
+    flex: 1 1 220px;
+}
+
+.pdf-controls>span {
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .connect-card>div {
+        width: 100%;
+    }
+
+    h1 br {
+        display: none;
+    }
+
+    #previewTitle {
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+
+    #previewDownload {
+        display: block;
+        width: 100%;
+    }
+
+    .sheet-toolbar .form-select {
+        flex-basis: 100%;
+        width: 100% !important;
+    }
+
+    .sheet-toolbar label {
+        flex-basis: 100%;
+    }
+
+    .sheet-toolbar>span {
+        flex: 1 1 90px;
+        text-align: center;
+        font-size: .875rem;
+    }
+
+    .sheet-toolbar>button,
+    .pdf-controls>button {
+        flex: 1 1 auto;
+        padding-inline: .5rem;
+    }
+
+    .pdf-controls>span {
+        flex: 1 1 80px;
+        font-size: .875rem;
+    }
+
+    .pdf-sidebar {
+        max-height: 30dvh;
+    }
+
+    .file-table tbody tr {
+        padding: .5rem;
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    #previewDialog {
+        max-height: calc(100dvh - 12px);
+    }
+
+    .sheet-scroll {
+        max-height: 50dvh;
+    }
+
+    .pdf-sidebar {
+        max-height: 35dvh;
+    }
+}
+/* Tema sobre os componentes Bootstrap, sem alterar o framework local. */
+:root {
+    --bs-body-color: #25334b;
+    --bs-body-bg: #fff;
+    --bs-secondary-color: #627086;
+    --bs-border-color: #e0e6ef;
+    --bs-primary: #345cde;
+    --bs-primary-rgb: 52, 92, 222;
+    --bs-link-color: #345cde;
+    --bs-link-color-rgb: 52, 92, 222;
+}
+body { background: #f4f6fb; }
+.app-shell { max-width: 1160px; }
+.brand-name { font-size: 1.4rem; font-weight: 750; letter-spacing: -.8px; }
+.brand-mark { box-shadow: 0 4px 12px #345cde20; border-radius: 10px; }
+.connection { border: 1px solid #dce3ed; background: #fff; border-radius: 99px; padding: .5rem .75rem; color: #59677c; font-size: .75rem; }
+.connection.online { background: #edf8f2; border-color: #d3eadc; color: #246a48; }
+.eyebrow { font-size: .65rem; font-weight: 750; letter-spacing: .14em; }
+.hero-title { font-size: clamp(2rem, 4.5vw, 3.1rem); line-height: 1.12; letter-spacing: -.045em; font-weight: 750; }
+.intro-copy { max-width: 550px; line-height: 1.7; }
+.surface-card { border-radius: 1.25rem; box-shadow: 0 5px 20px #25334b04; }
+.section-icon { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; background: #eef2ff; border-radius: 12px; font-size: 1.35rem; }
+.dropzone { background: #f8faff; border-width: 1.5px; border-color: #b9c9ef; transition: background .15s, border-color .15s; }
+.dropzone:hover, .dropzone.dragging { background: #edf2ff; }
+.upload-icon { display: grid; place-items: center; background: #e9efff; width: 58px; height: 58px; border-radius: 18px; }
+.dropzone-title { font-size: 1rem; }
+.choose-files { color: var(--bs-primary); font-weight: 600; }
+.btn { border-radius: .65rem; font-size: .875rem; font-weight: 600; padding-top: .65rem; padding-bottom: .65rem; }
+.btn-primary { --bs-btn-bg: #345cde; --bs-btn-border-color: #345cde; --bs-btn-hover-bg: #2549c0; --bs-btn-hover-border-color: #2549c0; --bs-btn-active-bg: #2549c0; }
+.btn-outline-primary { --bs-btn-color: #345cde; --bs-btn-border-color: #c5d1f2; --bs-btn-hover-bg: #edf2ff; --bs-btn-hover-color: #2549c0; --bs-btn-hover-border-color: #8ba4e9; --bs-btn-active-bg: #dde7ff; --bs-btn-active-color: #2549c0; }
+.form-control, .form-select { border-radius: .65rem; background-color: #fbfcfe; }
+.form-control::placeholder { color: #7b879a; }
+#linkStatus:empty, #qrStatus:empty { display: none; }
+#connectionQR { border-radius: 12px; border: 1px solid var(--bs-border-color); width: 180px; height: 180px; }
+#connectionAddress { text-decoration: none; font-variant-numeric: tabular-nums; }
+.count-badge { color: #54657f; background: #e7ecf5; padding: .5rem .75rem; border-radius: 99px; font-weight: 600; }
+.file-table { --bs-table-hover-bg: #f6f8ff; }
+.file-table thead th { background: #fafbfe; color: #69768b; font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; padding: 1rem 1.25rem; font-weight: 600; }
+.file-table td { padding: 1rem 1.25rem; font-size: .875rem; }
+.file-table td:nth-child(2) { color: var(--bs-secondary-color); font-size: .8rem; }
+.file-name { display: flex; align-items: center; gap: .75rem; line-height: 1.5; }
+.file-name > .file-label { min-width: 0; overflow-wrap: anywhere; }
+.file-type { display: inline-grid; place-items: center; flex: 0 0 42px; height: 44px; border: 1px solid #dce5f6; border-radius: 10px; background: #f0f4fc; color: #4562a0; font-size: .6rem; letter-spacing: .03em; font-weight: 700; }
+.file-type[data-kind="pdf"] { background: #fff2f0; border-color: #f6ded9; color: #ad4940; }
+.file-type[data-kind="spreadsheet"] { background: #edf8f1; border-color: #d1eadb; color: #2c7854; }
+.file-type[data-kind="image"] { background: #f5f0ff; border-color: #e6def6; color: #7a50aa; }
+#sharedLinks .list-group-item { padding: 1rem 1.25rem; border: 1px solid var(--bs-border-color); }
+#sharedLinks a { font-weight: 600; text-decoration: none; }
+#sharedLinks a:hover { text-decoration: underline; }
+.skip-link { position: fixed; top: 8px; left: 8px; padding: 12px; background: white; z-index: 10; }
+@media (max-width: 767.98px) {
+    .app-header { gap: .75rem !important; }
+    .file-table td { padding: .5rem; }
+    .file-table td:nth-child(2) { padding-left: 3.9rem; }
+    .file-table tbody tr { padding: .75rem; }
+    .aside-note { text-align: center; }
+}
+@media (max-width: 575.98px) {
+    .hero-title { max-width: 350px; }
+    .connect-card { padding: 1.25rem !important; }
+    .section-icon { width: 32px; height: 32px; border-radius: 10px; }
+    .surface-card .h5 { font-size: 1.1rem; }
+    .intro-copy { font-size: .95rem; }
+    footer { line-height: 1.7; }
+}
+@media (prefers-reduced-motion: reduce) { .dropzone { transition: none; } }
+
+.file-table th:last-child { width: 144px; }
+.file-actions .btn { white-space: nowrap; }
