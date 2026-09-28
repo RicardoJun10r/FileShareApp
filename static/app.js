@@ -5,7 +5,6 @@ const uploadButton = document.getElementById('upload');
 const dropzone = document.getElementById('dropzone');
 const connection = document.getElementById('connection');
 const connectionText = document.getElementById('connectionText');
-let requestVersion = 0;
 let retryTimer;
 
 function tamanho(bytes) {
@@ -33,66 +32,186 @@ dropzone.addEventListener('drop', event => {
     }
 });
 
-async function carregarArquivos() {
-    const version = ++requestVersion;
-    clearTimeout(retryTimer);
-    try {
-        const response = await fetch('/files/', { cache: 'no-store' });
-        if (!response.ok) throw new Error('Falha ao carregar arquivos');
-        const files = await response.json();
-        if (version !== requestVersion) return;
-        const table = document.getElementById('filesTable');
-        table.replaceChildren();
-        for (const file of files) {
-            const row = table.insertRow();
-            row.className = 'file-row';
-            const name = document.createElement('button');
-            name.type = 'button';
-            name.className = 'file-name btn btn-link text-start text-decoration-none text-body fw-semibold w-100 p-0';
-            const type = document.createElement('span');
-            type.className = 'file-type';
-            type.dataset.kind = file.preview || 'file';
-            type.setAttribute('aria-hidden', 'true');
-            const extension = file.filename.includes('.') ? file.filename.split('.').pop() : '';
-            type.textContent = extension && extension.length <= 5 ? extension.toUpperCase() : 'FILE';
-            const label = document.createElement('span');
-            label.className = 'file-label';
-            label.textContent = file.filename;
-            name.append(type, label);
-            name.setAttribute('aria-label', `Abrir prévia de ${file.filename}`);
-            name.setAttribute('aria-haspopup', 'dialog');
-            row.insertCell().appendChild(name);
-            row.addEventListener('click', event => {
-                if (!event.target.closest('a')) abrirPreview(file);
-            });
-            row.insertCell().textContent = tamanho(file.size);
-            const link = document.createElement('a');
-            link.href = `/download/${file.id}`;
-            link.textContent = 'Baixar ↓';
-            link.className = 'btn btn-outline-primary';
-            link.download = file.filename;
-            link.setAttribute('aria-label', `Baixar ${file.filename}`);
-            const actions = document.createElement('div');
-            actions.className = 'file-actions d-flex flex-wrap justify-content-end gap-2';
-            actions.append(link);
-            row.insertCell().appendChild(actions);
-            row.setAttribute('role', 'row');
-            for (const cell of row.cells) cell.setAttribute('role', 'cell');
+const catalogFiles = new Map();
+const catalogLinks = new Map();
+const listingState = {
+    files: { page: 0, nodes: new Map() },
+    links: { page: 0, nodes: new Map() },
+};
+let syncRevision = null;
+let syncEpoch = '';
+let syncPromise;
+let syncAgain = false;
+let syncFailed = false;
+const LIST_PAGE_SIZE = 20;
+
+function createFileRow(file) {
+    const row = document.createElement('tr');
+    row.className = 'file-row';
+    const name = document.createElement('button');
+    name.type = 'button';
+    name.className = 'file-name btn btn-link text-start text-decoration-none text-body fw-semibold w-100 p-0';
+    const type = document.createElement('span');
+    type.className = 'file-type';
+    type.dataset.kind = file.preview || 'file';
+    type.setAttribute('aria-hidden', 'true');
+    const extension = file.filename.includes('.') ? file.filename.split('.').pop() : '';
+    type.textContent = extension && extension.length <= 5 ? extension.toUpperCase() : 'FILE';
+    const label = document.createElement('span');
+    label.className = 'file-label';
+    label.textContent = file.filename;
+    name.append(type, label);
+    name.setAttribute('aria-label', `Abrir prévia de ${file.filename}`);
+    name.setAttribute('aria-haspopup', 'dialog');
+    row.insertCell().appendChild(name);
+    row.addEventListener('click', event => {
+        if (!event.target.closest('a')) abrirPreview(file);
+    });
+    row.insertCell().textContent = tamanho(file.size);
+    const link = document.createElement('a');
+    link.href = `/download/${file.id}`;
+    link.textContent = 'Baixar ↓';
+    link.className = 'btn btn-outline-primary';
+    link.download = file.filename;
+    link.setAttribute('aria-label', `Baixar ${file.filename}`);
+    const actions = document.createElement('div');
+    actions.className = 'file-actions d-flex flex-wrap justify-content-end gap-2';
+    actions.append(link);
+    row.insertCell().appendChild(actions);
+    row.setAttribute('role', 'row');
+    for (const cell of row.cells) cell.setAttribute('role', 'cell');
+
+    return row;
+}
+
+function createLinkRow(link) {
+    const item = document.createElement('li');
+    item.className = 'list-group-item rounded-3';
+    const anchor = document.createElement('a');
+    anchor.className = 'd-block text-break py-2';
+    anchor.href = link.url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.textContent = link.title;
+    const address = document.createElement('small');
+    address.className = 'd-block text-secondary text-break';
+    address.textContent = link.url;
+    item.append(anchor, address);
+    return item;
+}
+
+function renderListing(kind) {
+    const isFile = kind === 'files';
+    const source = isFile ? catalogFiles : catalogLinks;
+    const state = listingState[kind];
+    const values = [...source.values()].reverse();
+    const pages = Math.max(1, Math.ceil(values.length / LIST_PAGE_SIZE));
+    state.page = Math.min(state.page, pages - 1);
+    const visible = values.slice(state.page * LIST_PAGE_SIZE, (state.page + 1) * LIST_PAGE_SIZE);
+    const container = document.getElementById(isFile ? 'filesTable' : 'sharedLinks');
+    const ids = new Set(visible.map(item => item.id));
+    for (const [id, cached] of state.nodes) {
+        if (!ids.has(id)) { cached.node.remove(); state.nodes.delete(id); }
+    }
+    for (const placeholder of container.querySelectorAll(':scope > :not([data-id])')) placeholder.remove();
+    visible.forEach((item, position) => {
+        const signature = JSON.stringify(item);
+        let cached = state.nodes.get(item.id);
+        if (!cached || cached.signature !== signature) {
+            const node = isFile ? createFileRow(item) : createLinkRow(item);
+            node.dataset.id = item.id;
+            if (cached) cached.node.replaceWith(node);
+            cached = { node, signature };
+            state.nodes.set(item.id, cached);
         }
-        document.getElementById('count').textContent = `${files.length} ${files.length === 1 ? 'arquivo' : 'arquivos'}`;
-        if (!files.length) {
-            const cell = table.insertRow().insertCell();
-            cell.parentElement.setAttribute('role', 'row');
-            cell.setAttribute('role', 'cell');
+        const current = container.children[position];
+        if (current !== cached.node) container.insertBefore(cached.node, current || null);
+    });
+    if (!visible.length) {
+        const empty = document.createElement(isFile ? 'tr' : 'li');
+        if (isFile) {
+            const cell = empty.insertCell();
             cell.colSpan = 3;
             cell.className = 'empty text-center text-secondary py-4';
             cell.textContent = 'Tudo pronto para compartilhar. Envie o primeiro arquivo!';
+        } else {
+            empty.className = 'list-group-item rounded-3 text-secondary';
+            empty.textContent = 'Nenhum link compartilhado ainda.';
         }
-    } catch (error) {
-        if (version !== requestVersion) return;
-        document.getElementById('count').textContent = 'Tentando sincronizar…';
-        retryTimer = setTimeout(carregarArquivos, 3000);
+        container.append(empty);
     }
+    document.getElementById(isFile ? 'count' : 'linkCount').textContent = `${values.length} ${isFile ? (values.length === 1 ? 'arquivo' : 'arquivos') : (values.length === 1 ? 'link' : 'links')}`;
+    document.getElementById(`${kind}Page`).textContent = `Página ${state.page + 1} de ${pages}`;
+    document.getElementById(`${kind}Previous`).disabled = state.page === 0;
+    document.getElementById(`${kind}Next`).disabled = state.page + 1 === pages;
+}
+
+for (const kind of ['files', 'links']) {
+    for (const [control, increment] of [['Previous', -1], ['Next', 1]]) {
+        document.getElementById(`${kind}${control}`).addEventListener('click', () => {
+            listingState[kind].page += increment;
+            renderListing(kind);
+        });
+    }
+}
+
+function syncCatalog() {
+    syncAgain = true;
+    if (syncPromise) return syncPromise;
+    syncPromise = (async () => {
+        clearTimeout(retryTimer);
+        while (syncAgain) {
+            syncAgain = false;
+            const params = new URLSearchParams({ epoch: syncEpoch });
+            if (syncRevision !== null) params.set('since', syncRevision);
+            const response = await fetch(`/sync/?${params}`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Falha ao sincronizar');
+            const change = await response.json();
+            if (change.reset) { catalogFiles.clear(); catalogLinks.clear(); }
+            change.deleted.forEach(id => catalogFiles.delete(id));
+            change.files.forEach(item => catalogFiles.set(item.id, item));
+            change.links.forEach(item => catalogLinks.set(item.id, item));
+            syncRevision = change.revision;
+            syncEpoch = change.epoch;
+            if (syncFailed || change.reset || change.files.length || change.deleted.length) renderListing('files');
+            if (syncFailed || change.reset || change.links.length) renderListing('links');
+            syncFailed = false;
+        }
+    })().catch(() => {
+        syncFailed = true;
+        document.getElementById('count').textContent = 'Tentando sincronizar…';
+        retryTimer = setTimeout(syncCatalog, 3000);
+    }).finally(() => { syncPromise = null; });
+    return syncPromise;
+}
+const carregarArquivos = syncCatalog;
+const carregarLinks = syncCatalog;
+
+function enviarArquivos(data) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload/');
+        xhr.upload.addEventListener('progress', event => {
+            if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                statusMessage.textContent = `Transferindo seus arquivos… ${percent}%`;
+            }
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+                return;
+            }
+            let message = 'Falha no envio. Verifique sua conexão e tente novamente.';
+            try {
+                const detail = JSON.parse(xhr.responseText).detail;
+                if (detail) message = detail;
+            } catch (error) { /* mantém a mensagem padrão */ }
+            reject(new Error(message));
+        });
+        xhr.addEventListener('error', () => reject(new Error('Falha no envio. Verifique sua conexão e tente novamente.')));
+        xhr.send(data);
+    });
 }
 
 form.addEventListener('submit', async event => {
@@ -102,17 +221,16 @@ form.addEventListener('submit', async event => {
     input.disabled = true;
     uploadButton.textContent = 'Enviando…';
     statusMessage.classList.remove('error');
-    statusMessage.textContent = 'Transferindo seus arquivos. Aguarde…';
+    statusMessage.textContent = 'Transferindo seus arquivos… 0%';
     try {
-        const response = await fetch('/upload/', { method: 'POST', body: data });
-        if (!response.ok) throw new Error('Não foi possível enviar. Tente novamente.');
+        await enviarArquivos(data);
         form.reset();
         mostrarSelecao();
         statusMessage.textContent = 'Arquivos enviados e disponíveis para todos na rede!';
         await carregarArquivos();
     } catch (error) {
         statusMessage.classList.add('error');
-        statusMessage.textContent = 'Falha no envio. Verifique sua conexão e tente novamente.';
+        statusMessage.textContent = error.message;
     } finally {
         uploadButton.disabled = false;
         input.disabled = false;
@@ -309,46 +427,6 @@ async function abrirPreview(file) {
     }
 }
 
-let linkVersion = 0;
-let linkRetry;
-async function carregarLinks() {
-    const version = ++linkVersion;
-    clearTimeout(linkRetry);
-    try {
-        const response = await fetch('/links/', { cache: 'no-store' });
-        if (!response.ok) throw new Error('Falha ao carregar links');
-        const links = await response.json();
-        if (version !== linkVersion) return;
-        const list = document.getElementById('sharedLinks');
-        list.replaceChildren();
-        for (const link of links) {
-            const item = document.createElement('li');
-            item.className = 'list-group-item rounded-3';
-            const anchor = document.createElement('a');
-            anchor.className = 'd-block text-break py-2';
-            anchor.href = link.url;
-            anchor.target = '_blank';
-            anchor.rel = 'noopener noreferrer';
-            anchor.textContent = link.title;
-            const address = document.createElement('small');
-            address.className = 'd-block text-secondary text-break';
-            address.textContent = link.url;
-            item.append(anchor, address);
-            list.appendChild(item);
-        }
-        if (!links.length) {
-            const empty = document.createElement('li');
-            empty.className = 'list-group-item rounded-3 text-secondary';
-            empty.textContent = 'Nenhum link compartilhado ainda.';
-            list.appendChild(empty);
-        }
-        document.getElementById('linkCount').textContent = `${links.length} ${links.length === 1 ? 'link' : 'links'}`;
-    } catch (error) {
-        if (version !== linkVersion) return;
-        document.getElementById('linkCount').textContent = 'Tentando sincronizar…';
-        linkRetry = setTimeout(carregarLinks, 3000);
-    }
-}
 document.getElementById('linkForm').addEventListener('submit', async event => {
     event.preventDefault();
     const button = document.getElementById('sendLink');
@@ -396,13 +474,12 @@ events.onopen = () => {
     connection.classList.add('online');
     connectionText.textContent = 'Atualização em tempo real';
 };
-events.onmessage = () => { carregarArquivos(); carregarLinks(); };
+events.onmessage = syncCatalog;
 events.onerror = () => {
     connection.classList.remove('online');
     connectionText.textContent = 'Reconectando…';
 };
-carregarArquivos();
-carregarLinks();
+syncCatalog();
 
 
 async function abrirTabela(file, controller) {
@@ -520,3 +597,11 @@ async function abrirTabela(file, controller) {
     });
     await load();
 }
+
+fetch('/storage/').then(response => {
+    if (!response.ok) throw new Error('Limite indisponível');
+    return response.json();
+}).then(storage => {
+    document.getElementById('storageStatus').textContent =
+        `Limite total de arquivos: ${tamanho(storage.limit)}. Os arquivos expiram após 2 minutos.`;
+}).catch(() => {});

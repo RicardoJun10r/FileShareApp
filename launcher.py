@@ -1,5 +1,11 @@
 """Inicializador de desktop e ponto de entrada do pacote PyInstaller."""
 
+import multiprocessing
+
+# Necessário antes dos imports do app também no executável PyInstaller.
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
 import argparse
 import ipaddress
 import os

@@ -14,7 +14,8 @@ O servidor roda em Python com FastAPI. A interface usa Bootstrap, funciona em te
 
 - **Enviar e baixar arquivos** entre computadores, celulares e tablets na mesma rede.
 - **Compartilhar links** com um título opcional.
-- **Receber atualizações em tempo real**, sem recarregar a página.
+- **Receber atualizações em tempo real**, transferindo apenas metadados alterados após a primeira sincronização.
+- **Navegar por arquivos e links**, com 20 itens por página e os mais recentes primeiro.
 - **Abrir prévias** clicando no nome ou no item da lista.
 
 | Prévia | Recursos |
@@ -27,6 +28,20 @@ O servidor roda em Python com FastAPI. A interface usa Bootstrap, funciona em te
 | Texto e código | Exibição como texto, limitada aos primeiros 100 KB |
 
 PDFs sem marcadores mostram uma lista de páginas no lugar dos tópicos. Planilhas mostram 100 linhas por página, até 100 colunas e até 4.000 caracteres por célula. A prévia não reproduz gráficos ou estilos do Excel nem recalcula fórmulas. Os limites da prévia não alteram o arquivo disponível para download.
+
+### Limites e desempenho das prévias
+
+- PDFs e planilhas/CSVs de até **32 MiB** podem gerar prévia. Arquivos maiores continuam disponíveis para download durante os dois minutos de permanência.
+- O trabalho pesado roda em **processos separados**, com até **2 processos simultâneos**, **8 trabalhos ativos ou aguardando** e **10 segundos de processamento por trabalho** (incluindo a inicialização do processo). A espera por uma vaga também tem limite de 10 segundos. No timeout, o processo é encerrado; um PDF inválido não encerra o servidor.
+- Pedidos simultâneos da mesma página PDF, sumário ou índice de tabela compartilham um trabalho. Fechar uma prévia não cancela o trabalho usado por outro cliente.
+- O cache de imagens PDF usa LRU: no máximo **24 páginas**, limitado ao menor valor entre **64 MiB e 1/8 da quota de arquivos**, contabilizando também os objetos Python.
+- Índices de tabelas e sumários compartilham outro cache LRU de até **24 entradas**, limitado ao menor valor entre **32 MiB e 1/8 da quota de arquivos**. Entradas maiores que o orçamento são retornadas sem retenção em cache. A expiração do arquivo invalida os dois caches.
+- CSVs são decodificados em blocos e lidos sequencialmente, preservando campos entre aspas e quebras de linha. XLSX/XLSM usam leitura sequencial em modo `read_only`; XLS usa o leitor do formato legado, com carregamento por aba.
+- O índice contém até **10.000 linhas no total**, incluindo cabeçalhos, e aproximadamente **8 MiB de linhas normalizadas**. A prévia avisa quando é parcial. Após indexar, navegar entre páginas, alternar cabeçalho ou selecionar outra aba usa o mesmo índice; mudar o separador cria outro índice. Uma entrada removida do cache precisa ser reconstruída.
+- Planilhas XLSX/XLSM são recusadas para prévia se ultrapassarem **64 MiB descompactadas** ou **2.048 entradas ZIP**. São mostradas até **64 abas**. Campos CSV acima de 1 milhão de caracteres são recusados pelo parser.
+- O sumário PDF tem limite de **10.000 páginas/tópicos**, com até 1.000 caracteres por título. Estes limites são de processamento e cache; não constituem um teto rígido de memória de todo o processo.
+
+A paginação das listas ocorre no navegador sobre os metadados sincronizados, com os itens mais recentes primeiro. O primeiro acesso recebe o catálogo completo; depois, `/sync/` entrega apenas inclusões e remoções. O histórico retém até 1.024 lotes ou 2 MiB; uma reconexão muito antiga ou reinicialização do servidor provoca uma nova sincronização completa. A interface reaproveita as linhas inalteradas, mantendo somente a página visível no DOM.
 
 ## Usar sem instalar Python
 
@@ -163,12 +178,15 @@ Os pacotes são pastas portáteis compactadas, não instaladores. A release só 
 ```text
 FileShareApp/
 ├── launcher.py               # Inicializador: endereço da rede e navegador
-├── pdf_preview.py            # Renderização PDFium incluída nos pacotes
+├── pdf_preview.py            # Operações PDFium executadas nos processos de prévia
+├── preview_jobs.py           # Processos, timeout, fila e deduplicação de prévias
+├── preview_cache.py          # Cache LRU com orçamento de memória
+├── catalog_sync.py           # Histórico limitado de mudanças do catálogo
 ├── scripts/                  # Build nativo e teste do pacote extraído
 ├── packaging/                # Instruções distribuídas e notas da release
 ├── .github/workflows/        # Builds por sistema e publicação
 ├── main.py                   # API, upload/download, SSE, links, QR Code e PDF
-├── tabular_preview.py        # Leitura e paginação de Excel, CSV e TSV
+├── tabular_preview.py        # Leitura incremental, índice e paginação de tabelas
 ├── pyproject.toml            # Dependências e configuração do pytest
 ├── uv.lock                   # Versões resolvidas das dependências
 ├── .python-version           # Versão de Python usada no projeto
@@ -186,11 +204,15 @@ FileShareApp/
 └── docs/images/              # Capturas usadas nesta documentação
 ```
 
-O navegador envia arquivos e links pela API. O servidor mantém os dados em memória e avisa os clientes por **Server-Sent Events (SSE)**. Ao receber o aviso, o JavaScript atualiza as listas. As prévias são carregadas quando o usuário abre um item.
+O navegador envia arquivos e links pela API. O servidor mantém os dados em memória e avisa os clientes por **Server-Sent Events (SSE)**. Ao receber o aviso, o JavaScript solicita as mudanças desde sua última revisão e altera apenas os itens afetados. As prévias são carregadas quando o usuário abre um item.
 
 ## Limitações da versão atual
 
-- **Armazenamento temporário:** arquivos e links desaparecem ao encerrar ou reiniciar o servidor. Arquivos grandes consomem a RAM do computador.
+- **Expiração:** arquivos são removidos automaticamente 2 minutos após o lote ser publicado. Downloads e prévias novos deixam de estar disponíveis; uma transferência já iniciada pode terminar. A limpeza em segundo plano roda a cada segundo e atualiza todos os clientes. Links permanecem até reiniciar.
+- **Orçamento de RAM:** na inicialização, o aplicativo fixa uma quota para o conteúdo dos arquivos de até 25% da RAM disponível, limitada a 512 MiB. Em máquinas com pouca memória, a quota diminui para manter uma reserva de 256 MiB e margem para cópias. Com 256 MiB disponíveis ou menos, novos uploads ficam bloqueados. O limite aparece na página e no log de inicialização.
+- **Admissão de uploads:** lotes são verificados antes de carregar seu conteúdo na RAM, sem publicação parcial. Uploads concorrentes compartilham a quota; se ela estiver cheia, aguarde a expiração. Uma nova checagem da RAM disponível pode recusar uploads mesmo antes de atingir a quota. `FILESHARE_MAX_UPLOAD_MB` continua limitando cada arquivo (padrão 1024 MiB), mas não aumenta a quota total.
+- **Margem de segurança:** a quota limita o conteúdo armazenado, não toda a memória do processo. Multipart, prévias, transferências em andamento e outros programas também consomem recursos; não há garantia absoluta contra falta de RAM. O cache de páginas PDF é limitado a 24 páginas e ao menor valor entre 64 MiB e 1/8 da quota de arquivos.
+- **Dados temporários:** arquivos e links também desaparecem ao encerrar ou reiniciar o servidor.
 - **Um único processo:** use o comando de inicialização sem múltiplos workers. Os dados e as conexões SSE não são compartilhados entre processos.
 - **Acesso pela rede:** não há autenticação. Quem conseguir acessar o servidor pode compartilhar e baixar conteúdo; o uso previsto é em uma rede local de confiança.
 - **Desenvolvimento:** `--reload` pode ser adicionado ao comando do Uvicorn, mas cada reinicialização provocada por alterações no código apaga os dados em memória.

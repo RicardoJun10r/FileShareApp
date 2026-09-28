@@ -1,8 +1,11 @@
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from main import app, db, links
+import main
+import pdf_preview
+from main import app, db, links, pdf_render_cache
 
 
 def sample_pdf():
@@ -36,6 +39,61 @@ def sample_pdf():
 
 
 class PdfAndLinksTest(unittest.TestCase):
+    def test_pdf_operations_share_lock_and_release_it_on_error(self):
+        document_factory = pdf_preview.pdfium.PdfDocument
+
+        def guarded_document(*args, **kwargs):
+            self.assertTrue(pdf_preview._pdfium_lock.locked())
+            return document_factory(*args, **kwargs)
+
+        with patch.object(pdf_preview.pdfium, "PdfDocument", side_effect=guarded_document):
+            for operation in (
+                pdf_preview.read_pdf_outline,
+                lambda content: pdf_preview.render_pdf(content, 1),
+            ):
+                with self.subTest(operation=operation):
+                    operation(sample_pdf())
+                    self.assertFalse(pdf_preview._pdfium_lock.locked())
+                    with self.assertRaises(main.HTTPException) as error:
+                        operation(b"invalid pdf")
+                    self.assertEqual(error.exception.status_code, 422)
+                    self.assertFalse(pdf_preview._pdfium_lock.locked())
+
+    def test_upload_batch_is_atomic_and_notifies_only_after_success(self):
+        before = dict(db)
+        try:
+            with (
+                TestClient(app) as client,
+                patch.object(main, "MAX_UPLOAD_BYTES", 10),
+                patch.object(main, "notify_clients") as notify,
+            ):
+                response = client.post("/upload/", files=[
+                    ("files", ("small.bin", b"a" * 5)),
+                    ("files", ("big.bin", b"b" * 11)),
+                ])
+                self.assertEqual(response.status_code, 413)
+                self.assertEqual(db, before)
+                notify.assert_not_called()
+
+                published = []
+                notify.side_effect = lambda: published.append(set(db) - set(before))
+                response = client.post("/upload/", files=[
+                    ("files", ("small.bin", b"a" * 5)),
+                    ("files", ("other.bin", b"b" * 10)),
+                ])
+                self.assertEqual(response.status_code, 200)
+                added = set(db) - set(before)
+                self.assertEqual(len(added), 2)
+                self.assertEqual(published, [added])
+                notify.assert_called_once()
+                self.assertEqual(
+                    {db[key]["filename"]: db[key]["content"] for key in added},
+                    {"small.bin": b"a" * 5, "other.bin": b"b" * 10},
+                )
+        finally:
+            for key in set(db) - set(before):
+                db.pop(key)
+
     def test_pdf_pages_and_invalid_files(self):
         with TestClient(app) as client:
             original = sample_pdf()
@@ -61,8 +119,42 @@ class PdfAndLinksTest(unittest.TestCase):
                 )
                 self.assertEqual(client.get(f"/download/{file_id}").content, original)
                 db[file_id]["content"] = b"not a pdf"
+                for key in [key for key in pdf_render_cache if key[0] == file_id]:
+                    del pdf_render_cache[key]
                 self.assertEqual(client.get(f"/preview/{file_id}/pdf").status_code, 422)
             finally:
+                db.pop(file_id, None)
+
+    def test_pdf_render_is_cached(self):
+        with TestClient(app) as client:
+            client.post(
+                "/upload/", files={"files": ("cache.pdf", sample_pdf())}
+            ).raise_for_status()
+            file_id = client.get("/files/").json()[-1]["id"]
+            try:
+                with patch.object(app.state.preview_jobs, "run", wraps=app.state.preview_jobs.run) as render:
+                    first = client.get(f"/preview/{file_id}/pdf?page=1")
+                    second = client.get(f"/preview/{file_id}/pdf?page=1")
+                    self.assertEqual(first.status_code, 200)
+                    self.assertEqual(first.content, second.content)
+                    render.assert_called_once()
+            finally:
+                db.pop(file_id, None)
+                for key in [key for key in pdf_render_cache if key[0] == file_id]:
+                    del pdf_render_cache[key]
+
+    def test_upload_rejects_file_above_limit(self):
+        with TestClient(app) as client:
+            with patch.object(main, "MAX_UPLOAD_BYTES", 10):
+                response = client.post(
+                    "/upload/", files={"files": ("big.bin", b"x" * 11)}
+                )
+                self.assertEqual(response.status_code, 413)
+                response = client.post(
+                    "/upload/", files={"files": ("small.bin", b"x" * 10)}
+                )
+                self.assertEqual(response.status_code, 200)
+                file_id = client.get("/files/").json()[-1]["id"]
                 db.pop(file_id, None)
 
     def test_share_and_validate_links(self):

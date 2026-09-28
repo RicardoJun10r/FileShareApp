@@ -1,4 +1,17 @@
-Primeira versão empacotada do FileShare: compartilhe arquivos e links na rede local pelo navegador.
+FileShare 0.2.0 — transferências rápidas na rede local, com controle de memória e prévias isoladas.
+
+### Novidades
+
+- Arquivos expiram automaticamente **2 minutos após o envio completo**, atualizando todos os dispositivos.
+- Quota calculada ao iniciar: até **25% da RAM disponível**, com teto de **512 MiB** e margem de segurança. Uploads são recusados quando não há espaço suficiente.
+- Listas de arquivos e links com **20 itens por página**, mais recentes primeiro e sincronização apenas das alterações.
+- Progresso de upload e validação do lote inteiro antes de publicar arquivos.
+- PDFs e tabelas processados separadamente, com **prazo máximo de 10 segundos**, fila limitada e reaproveitamento de requisições iguais.
+- Cache de prévias limitado por memória; CSV/Excel usam índice reutilizável para navegar sem reler o arquivo a cada página.
+- Suporte a intervalos HTTP para downloads e reprodução de mídia.
+- Correções de concorrência do PDFium e de uploads parcialmente rejeitados.
+
+Prévias aceitam arquivos de até **32 MiB**. Tabelas mostram até **10.000 linhas**, respeitando também o limite do índice; a interface informa quando a prévia é parcial. O original permanece disponível para download até expirar.
 
 ### Como usar
 
@@ -22,7 +35,8 @@ Cada pacote passa por testes do código e um teste do executável extraído: ini
 ### Observações
 
 - Pacotes sem assinatura de editor/notarização; Windows e macOS podem apresentar avisos de origem.
-- Arquivos e links são temporários e desaparecem quando o aplicativo é encerrado.
+- Arquivos expiram em 2 minutos; links permanecem até encerrar o aplicativo. Reiniciar remove todos os dados.
+- Os limites reduzem o consumo de memória, mas não garantem ausência de falta de RAM causada por outros programas ou pelo processamento de arquivos.
 - Não há autenticação: utilize uma rede local de confiança e permita a porta exibida no firewall da rede privada.
 - Se a porta 8000 estiver ocupada, o inicializador procura uma porta livre até 8010. Use `--port 9000` para escolher outra.
 - `SHA256SUMS.txt` contém os hashes dos pacotes publicados.

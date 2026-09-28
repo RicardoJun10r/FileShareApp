@@ -42,3 +42,39 @@ def render_pdf(content: bytes, page: int):
                 status_code=422,
                 detail="PDF inválido ou protegido por senha. Baixe para abri-lo",
             ) from error
+
+
+def read_pdf_outline(content: bytes):
+    with _pdfium_lock:
+        try:
+            with pdfium.PdfDocument(content) as document:
+                count = len(document)
+                if count > 10_000:
+                    raise HTTPException(413, "PDF excede 10.000 páginas para o sumário. Baixe o original.")
+                items = []
+                for bookmark in document.get_toc():
+                    if len(items) >= 10_000:
+                        break
+                    dest = bookmark.get_dest()
+                    page = dest.get_index() if dest else None
+                    if page is not None and 0 <= page < count:
+                        items.append(
+                            {
+                                "title": bookmark.get_title()[:1000],
+                                "page": page + 1,
+                                "level": bookmark.level,
+                            }
+                        )
+                source = "bookmarks" if items else "pages"
+                if not items:
+                    items = [
+                        {"title": f"Página {page + 1}", "page": page + 1, "level": 0}
+                        for page in range(count)
+                    ]
+                return {"pages": count, "source": source, "items": items}
+        except HTTPException:
+            raise
+        except Exception as error:
+            raise HTTPException(
+                status_code=422, detail="Não foi possível ler o sumário deste PDF"
+            ) from error

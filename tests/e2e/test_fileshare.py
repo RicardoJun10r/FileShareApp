@@ -131,3 +131,32 @@ def test_excel_tabs(page, app_url):
     page.get_by_label("Aba da planilha").select_option(label="Dados")
     expect(page.locator(".sheet-table")).to_contain_text("=SUM(B1,2)")
     fits(page)
+
+
+def test_catalog_pagination_and_incremental_rows(page, app_url):
+    import httpx
+
+    open_app(page, app_url)
+    with httpx.Client(base_url=app_url, trust_env=False) as client:
+        client.post('/upload/', files=[
+            ('files', (f'arquivo-{i:02d}.txt', b'x' * (i + 1))) for i in range(23)
+        ]).raise_for_status()
+        expect(page.locator('#count')).to_have_text('23 arquivos')
+        expect(page.locator('#filesTable tr')).to_have_count(20)
+        expect(page.locator('#filesTable tr').first).to_contain_text('arquivo-22.txt')
+        page.get_by_role('button', name='Próximos arquivos', exact=True).click()
+        expect(page.locator('#filesTable tr')).to_have_count(3)
+        expect(page.locator('#filesPage')).to_have_text('Página 2 de 2')
+        expect(page.locator('#filesTable tr').first).to_contain_text('arquivo-02.txt')
+        page.get_by_role('button', name='Arquivos anteriores', exact=True).click()
+        expect(page.locator('#filesTable tr')).to_have_count(20)
+        page.evaluate("window.keptRow = document.querySelector('#filesTable tr')")
+        observed = []
+        page.on('request', lambda request: observed.append(request.url))
+        client.post('/upload/', files={'files': ('zzz-new.txt', b'new')}).raise_for_status()
+        expect(page.locator('#count')).to_have_text('24 arquivos')
+        assert page.evaluate("window.keptRow === document.querySelectorAll('#filesTable tr')[1]")
+        assert not any(url.endswith('/files/') or url.endswith('/links/') for url in observed)
+        client.post('/links/', json={'url': 'https://example.com', 'title': 'Ação compartilhada'}).raise_for_status()
+        expect(page.get_by_role('link', name='Ação compartilhada', exact=True)).to_be_visible()
+        fits(page)

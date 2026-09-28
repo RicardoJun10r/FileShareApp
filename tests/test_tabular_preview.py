@@ -40,13 +40,12 @@ def xlsx_fixture():
 
 class TabularPreviewTest(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(app)
+        self.client = self.enterContext(TestClient(app))
         self.uploaded = []
 
     def tearDown(self):
         for file_id in self.uploaded:
             db.pop(file_id, None)
-        self.client.close()
 
     def upload(self, name, data):
         self.client.post("/upload/", files={"files": (name, data)}).raise_for_status()

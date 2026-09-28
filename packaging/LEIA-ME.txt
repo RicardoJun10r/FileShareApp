@@ -1,4 +1,4 @@
-FileShare 0.1.1
+FileShare 0.2.0
 
 1. Extraia TODO o pacote para uma pasta. Não execute de dentro do ZIP.
 2. Windows: abra FileShare.exe.
@@ -17,7 +17,10 @@ avisos de origem. Confira a origem da release antes de decidir executá-los.
 O firewall deve permitir a porta exibida pelo servidor na sua rede privada.
 Não desative o firewall inteiro.
 
-Arquivos e links ficam na memória e desaparecem ao encerrar o servidor.
+Arquivos expiram automaticamente após 2 minutos do envio completo.
+Links permanecem até encerrar o servidor. Todos os dados ficam na memória.
+O limite de arquivos é calculado conforme a RAM disponível e aparece na página.
+PDFs e planilhas acima de 32 MiB continuam disponíveis para download, sem prévia.
 Não há login: use apenas em redes locais de confiança.
 
 Opções pelo terminal:
