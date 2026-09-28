@@ -28,7 +28,33 @@ O servidor roda em Python com FastAPI. A interface usa Bootstrap, funciona em te
 
 PDFs sem marcadores mostram uma lista de páginas no lugar dos tópicos. Planilhas mostram 100 linhas por página, até 100 colunas e até 4.000 caracteres por célula. A prévia não reproduz gráficos ou estilos do Excel nem recalcula fórmulas. Os limites da prévia não alteram o arquivo disponível para download.
 
-## Como usar
+## Usar sem instalar Python
+
+Baixe o pacote do seu sistema em **[GitHub Releases](https://github.com/RicardoJun10r/FileShareApp/releases/latest)** e extraia a pasta inteira.
+
+| Pacote | Como iniciar |
+| --- | --- |
+| Windows x86_64 | Abra `FileShare.exe` |
+| macOS arm64 (Apple Silicon) | Abra `Iniciar FileShare.command` |
+| macOS x86_64 (Intel) | Abra `Iniciar FileShare.command` |
+| Linux x86_64 | Execute `./FileShare` no terminal, dentro da pasta extraída |
+
+O inicializador mostra o endereço da rede e abre a página no navegador. Escaneie o QR Code em outro dispositivo conectado à mesma rede. Se a porta 8000 estiver ocupada, ele procura outra até 8010.
+
+**Mantenha o terminal aberto.** Para encerrar, pressione **Ctrl+C**. Não mova o executável para fora da pasta: os recursos e bibliotecas estão em `_internal`. Python, Bootstrap, favicon e PDFium já estão incluídos; não é preciso instalar Python ou Poppler.
+
+Os pacotes não são assinados/notarizados e podem gerar avisos de origem no Windows/macOS. A release permanece acessível somente a quem tem acesso ao repositório enquanto ele for privado.
+
+Opções no terminal (no Windows, use `FileShare.exe`):
+
+```bash
+./FileShare --no-browser
+./FileShare --port 9000
+./FileShare --version
+```
+
+## Executar pelo código-fonte
+
 
 ### 1. Prepare o computador que será o servidor
 
@@ -37,7 +63,7 @@ Você precisa de:
 - **Python 3.13 ou superior**. O projeto usa Python 3.13 em `.python-version`.
 - **[uv](https://docs.astral.sh/uv/getting-started/installation/)** para instalar e executar as dependências.
 - **Git**, caso escolha clonar o repositório em vez de baixar o ZIP pelo GitHub.
-- **Poppler**, somente para renderizar as páginas de PDFs na prévia.
+- A prévia de PDFs usa **PDFium**, instalado automaticamente como dependência Python.
 
 Clone o projeto e instale as dependências:
 
@@ -49,36 +75,15 @@ uv sync --locked
 
 O Bootstrap e os recursos da interface estão incluídos no projeto: depois da instalação, a interface não depende de uma CDN ou de conexão com a internet. Links externos compartilhados ainda podem precisar de internet para abrir.
 
-### 2. Habilite a prévia de PDFs
+### 2. Inicie o FileShare
 
-O servidor precisa encontrar `pdfinfo` e `pdftoppm` no `PATH`.
-
-**Ubuntu/Debian:**
+Na pasta do projeto, use o inicializador para abrir o navegador automaticamente:
 
 ```bash
-sudo apt install poppler-utils
+uv run python launcher.py
 ```
 
-**macOS com Homebrew:**
-
-```bash
-brew install poppler
-```
-
-**Windows:** instale uma distribuição do Poppler para Windows e adicione a pasta que contém `pdfinfo.exe` e `pdftoppm.exe` ao `PATH`. Reabra o terminal após essa alteração.
-
-Confira a instalação:
-
-```bash
-pdfinfo -v
-pdftoppm -v
-```
-
-Sem esses executáveis, o compartilhamento e o download continuam funcionando, mas a renderização de PDFs fica indisponível.
-
-### 3. Inicie o FileShare
-
-Na pasta do projeto:
+Ou inicie apenas o servidor:
 
 ```bash
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
@@ -92,7 +97,7 @@ No próprio computador, abra:
 http://localhost:8000
 ```
 
-### 4. Acesse pelo celular ou outro computador
+### 3. Acesse pelo celular ou outro computador
 
 1. Conecte os dispositivos à mesma rede local, por Wi-Fi ou cabo.
 2. Na página do FileShare, escaneie o QR Code com a câmera do celular.
@@ -108,7 +113,7 @@ Para descobrir o IP, consulte as configurações de rede do computador ou use `h
 
 > `localhost` no celular aponta para o próprio celular. Para acessar o servidor, use o IP do computador. `0.0.0.0` é o endereço de escuta do servidor, não o endereço a digitar no navegador.
 
-### 5. Compartilhe
+### 4. Compartilhe
 
 - **Arquivo:** selecione ou arraste arquivos para a área de envio e clique em **Enviar arquivos**.
 - **Prévia:** clique no item da lista; use **Baixar** para salvar o original.
@@ -145,18 +150,23 @@ Há duas partes distintas: o **computador que executa o servidor** e os **dispos
 | Plataforma | Uso | Situação atual |
 | --- | --- | --- |
 | Linux | Servidor e navegador | Ambiente em que os testes de integração e E2E foram executados |
-| Windows | Servidor e navegador | Execução prevista com Python, uv e dependências; ainda sem validação específica neste sistema |
-| macOS | Servidor e navegador | Execução prevista com Python, uv e dependências; ainda sem validação específica neste sistema |
+| Windows | Servidor e navegador | Pacote x64 validado pelo workflow em Windows Server 2022; testes em desktops Windows 10/11 ainda pendentes |
+| macOS | Servidor e navegador | Pacotes arm64 (runner macOS 14) e Intel (runner macOS 15), com teste do executável no workflow |
 | Android e iOS/iPadOS | Cliente pelo navegador | Interface responsiva; acesso não exige Python no celular. A suíte usa emulação mobile, não aparelhos reais |
 
 A validação automatizada da interface usa **Chromium**, nas larguras de **320, 375, 390, 768 e 1280 pixels**. Firefox, Safari e navegadores móveis reais ainda não têm uma matriz de testes própria. A compatibilidade dos testes Playwright também depende dos [requisitos oficiais do Playwright](https://playwright.dev/python/docs/intro).
 
-A distribuição atual é pelo código-fonte. Ainda não há instalador ou executável pronto incluído no projeto.
+Os pacotes são pastas portáteis compactadas, não instaladores. A release só é publicada quando os quatro builds e os testes dos executáveis passam. Em Linux, o pacote é gerado no Ubuntu 22.04 e requer glibc 2.35 ou superior; não é um binário para Alpine/musl. Versões de sistemas anteriores às usadas nos runners não foram validadas.
 
 ## Como o projeto está organizado
 
 ```text
 FileShareApp/
+├── launcher.py               # Inicializador: endereço da rede e navegador
+├── pdf_preview.py            # Renderização PDFium incluída nos pacotes
+├── scripts/                  # Build nativo e teste do pacote extraído
+├── packaging/                # Instruções distribuídas e notas da release
+├── .github/workflows/        # Builds por sistema e publicação
 ├── main.py                   # API, upload/download, SSE, links, QR Code e PDF
 ├── tabular_preview.py        # Leitura e paginação de Excel, CSV e TSV
 ├── pyproject.toml            # Dependências e configuração do pytest
@@ -221,4 +231,21 @@ Falhas geram screenshots e traces em `test-results/`, ignorado pelo Git. Para ab
 uv run playwright show-trace test-results/<caso>/trace.zip
 ```
 
-Em Linux, se faltarem bibliotecas do navegador, execute `uv run playwright install-deps chromium` — pode exigir privilégios de administrador. Os testes de PDF precisam do Poppler. O acesso pelo Wi-Fi e as regras do firewall precisam ser conferidos nos dispositivos reais.
+Em Linux, se faltarem bibliotecas do navegador, execute `uv run playwright install-deps chromium` — pode exigir privilégios de administrador. O renderizador PDFium é instalado junto com as dependências. O acesso pelo Wi-Fi e as regras do firewall precisam ser conferidos nos dispositivos reais.
+
+
+## Gerar pacotes e publicar versões
+
+O build usa PyInstaller em modo pasta (`onedir`). Cada sistema precisa de um build nativo; um pacote Linux não funciona no Windows ou macOS.
+
+```bash
+uv sync --locked --dev --group build
+uv run --group build python scripts/build.py
+uv run python scripts/smoke_package.py
+```
+
+O arquivo compactado aparece em `dist/`, com versão, sistema e arquitetura no nome. O smoke test extrai esse arquivo em uma pasta temporária e executa o programa sem Python ou Poppler no `PATH`, verificando recursos estáticos, upload/download, PDF, Excel, CSV, links e QR Code.
+
+O workflow `.github/workflows/release.yml` cria quatro pacotes em runners nativos. Uma execução manual gera artefatos de teste; uma tag `v*` também publica a release após todos os builds passarem.
+
+Para uma nova versão, atualize `project.version` em `pyproject.toml`, as instruções em `packaging/` e o lockfile. Faça commit e envie uma tag com a mesma versão. O workflow publica os pacotes e `SHA256SUMS.txt`, usando `packaging/RELEASE_NOTES.md` como instruções da release.

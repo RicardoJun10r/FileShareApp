@@ -8,12 +8,16 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "openpyxl>=3.1.5",
     "pypdf>=6.19.0",
+    "pypdfium2>=5.13.0",
     "python-multipart>=0.0.32",
     "qrcode[pil]>=8.2",
     "xlrd>=2.0.2",
 ]
 
 [dependency-groups]
+build = [
+    "pyinstaller>=6.22.3",
+]
 dev = [
     "pytest-playwright>=0.9.0",
 ]

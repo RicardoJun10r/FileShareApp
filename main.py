@@ -2,12 +2,9 @@ import asyncio
 import base64
 import ipaddress
 import os
-import re
 import socket
-import subprocess
 from io import BytesIO
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Annotated
 from urllib.parse import quote
 from uuid import uuid4
@@ -20,6 +17,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from pypdf import PdfReader
 
 from tabular_preview import read_table
+from pdf_preview import render_pdf
 
 # Conteúdo em memória: os arquivos são perdidos ao reiniciar o servidor.
 db = {}
@@ -236,63 +234,6 @@ for extension in (
 
 def preview_type(filename):
     return PREVIEW_TYPES.get(Path(filename).suffix.lower(), (None, None))
-
-
-def render_pdf(content: bytes, page: int):
-    # Arquivo temporário isolado; cada chamada renderiza apenas uma página.
-    try:
-        with TemporaryDirectory(prefix="fileshare-pdf-") as directory:
-            source = Path(directory) / "source.pdf"
-            source.write_bytes(content)
-            info = subprocess.run(
-                ["pdfinfo", str(source)],
-                capture_output=True,
-                timeout=15,
-                check=True,
-            )
-            match = re.search(rb"(?m)^Pages:\s+(\d+)", info.stdout)
-            if not match:
-                raise HTTPException(
-                    status_code=422, detail="Não foi possível ler as páginas do PDF"
-                )
-            pages = int(match.group(1))
-            if page > pages:
-                raise HTTPException(status_code=404, detail="Página não encontrada")
-            output = Path(directory) / "page"
-            subprocess.run(
-                [
-                    "pdftoppm",
-                    "-f",
-                    str(page),
-                    "-l",
-                    str(page),
-                    "-singlefile",
-                    "-scale-to",
-                    "1500",
-                    "-png",
-                    str(source),
-                    str(output),
-                ],
-                capture_output=True,
-                timeout=30,
-                check=True,
-            )
-            return output.with_suffix(".png").read_bytes(), pages
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=503,
-            detail="Instale poppler-utils no servidor para visualizar PDFs",
-        )
-    except subprocess.TimeoutExpired:
-        raise HTTPException(
-            status_code=422,
-            detail="Este PDF demorou demais para renderizar. Baixe para abri-lo",
-        )
-    except subprocess.CalledProcessError:
-        raise HTTPException(
-            status_code=422,
-            detail="PDF inválido ou protegido por senha. Baixe para abri-lo",
-        )
 
 
 @app.get("/preview/{file_id}/pdf")

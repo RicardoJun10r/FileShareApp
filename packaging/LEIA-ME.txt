@@ -1,0 +1,30 @@
+FileShare 0.1.0
+
+1. Extraia TODO o pacote para uma pasta. Não execute de dentro do ZIP.
+2. Windows: abra FileShare.exe.
+   macOS: abra Iniciar FileShare.command.
+   Linux: execute ./FileShare no terminal dentro da pasta extraída.
+3. O navegador abrirá automaticamente. O endereço da rede aparece no terminal
+   e no QR Code da página. Conecte o celular à mesma rede Wi-Fi.
+4. Mantenha o terminal aberto. Para encerrar, pressione Ctrl+C.
+
+Python, Bootstrap, favicon e renderizador PDF já estão incluídos.
+Não é necessário instalar Python nem Poppler.
+Não mova o executável para fora da pasta: ele depende da pasta _internal.
+
+Os pacotes não são assinados/notarizados. Windows e macOS podem apresentar
+avisos de origem. Confira a origem da release antes de decidir executá-los.
+O firewall deve permitir a porta exibida pelo servidor na sua rede privada.
+Não desative o firewall inteiro.
+
+Arquivos e links ficam na memória e desaparecem ao encerrar o servidor.
+Não há login: use apenas em redes locais de confiança.
+
+Opções pelo terminal:
+  FileShare --no-browser      Inicia sem abrir o navegador
+  FileShare --port 9000       Usa uma porta fixa
+  FileShare --version         Mostra a versão
+No Windows, use FileShare.exe. No Linux/macOS, use ./FileShare.
+
+Versões, código e instruções:
+https://github.com/RicardoJun10r/FileShareApp
